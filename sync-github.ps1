@@ -11,7 +11,7 @@ Write-Host "--- Iniciando Sincronização com GitHub ---" -ForegroundColor Cyan
 if (!(Test-Path .git)) {
     Write-Host "Inicializando repositório Git..."
     git init
-    git remote add origin https://github.com/104dk/LorcBR.git
+    git remote add origin https://github.com/104dk/LorcaBR.git
     git branch -M main
 }
 
@@ -30,7 +30,7 @@ $pushResult = git push -u origin main 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`n[ERRO] O push falhou!" -ForegroundColor Red
     Write-Host "Possíveis causas:" -ForegroundColor Yellow
-    Write-Host "1. O repositório 'https://github.com/104dk/LorcBR.git' não existe ou é privado."
+    Write-Host "1. O repositório 'https://github.com/104dk/LorcaBR.git' não existe ou é privado."
     Write-Host "2. Você não tem permissão de escrita (precisa configurar SSH ou Token)."
     Write-Host "3. O nome do repositório mudou."
     
