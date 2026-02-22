@@ -43,11 +43,21 @@ export default function Card({ card, onExert, onAddDamage, onRemoveDamage, isRea
             className={`relative rounded-lg border-2 shadow-xl flex-shrink-0 transition-transform flex flex-col items-center justify-center group ${isReadOnly ? 'w-16 h-24' : 'w-24 h-36 cursor-grab active:cursor-grabbing hover:-translate-y-2'} ${card.isExerted ? 'rotate-90 scale-95 border-amber-500 shadow-amber-500/20' : 'border-slate-600'
                 }`}
         >
-            <img
-                src={(isPtBr && card.ptImageUrl) ? card.ptImageUrl : card.imageUrl}
-                alt={card.name}
-                className="w-full h-full object-cover rounded-md select-none pointer-events-none"
-            />
+            {card.imageUrl === '/card-back.jpg' ? (
+                <div className="w-full h-full bg-slate-900 rounded-md border border-slate-700 flex flex-col items-center justify-center p-2 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.15),transparent)]" />
+                    <div className="w-12 h-16 border border-slate-800 rounded flex items-center justify-center bg-slate-950/50 shadow-inner z-10">
+                        <span className="text-indigo-500 font-bold text-xs rotate-45 select-none">LORCANA</span>
+                    </div>
+                    <div className="mt-2 text-[8px] text-slate-600 font-bold tracking-[0.3em] uppercase z-10">Mesa Virtual</div>
+                </div>
+            ) : (
+                <img
+                    src={(isPtBr && card.ptImageUrl) ? card.ptImageUrl : card.imageUrl}
+                    alt={card.name}
+                    className="w-full h-full object-cover rounded-md select-none pointer-events-none"
+                />
+            )}
 
             {/* Damage Counters Float */}
             {card.damage > 0 && (
