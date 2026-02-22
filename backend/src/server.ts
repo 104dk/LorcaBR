@@ -55,6 +55,11 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('update_cards', ({ roomId, cards }) => {
+        // Broadcast this player's cards to everyone else in the room
+        socket.to(roomId).emit('opponent_cards_updated', { playerId: socket.id, cards });
+    });
+
     socket.on('disconnecting', () => {
         // leave any rooms this socket is in
         socket.rooms.forEach((roomId) => {

@@ -30,6 +30,7 @@ interface GameState {
     players: Player[];
     connected: boolean;
     myCards: GameCard[];
+    opponentCards: Record<string, GameCard[]>; // track cards by player ID
     isPtBr: boolean; // Global toggle for translation
     toggleLanguage: () => void;
     setPlayerName: (name: string) => void;
@@ -68,12 +69,19 @@ export const useStore = create<GameState>((set, get) => {
         set({ players: room.players });
     });
 
+    socket.on('opponent_cards_updated', ({ playerId, cards }) => {
+        set((state) => ({
+            opponentCards: { ...state.opponentCards, [playerId]: cards }
+        }));
+    });
+
     return {
         roomId: null,
         playerName: '',
         players: [],
         connected: false,
         myCards: [],
+        opponentCards: {},
         isPtBr: true, // Default to Portuguese if available
 
         toggleLanguage: () => set((state) => ({ isPtBr: !state.isPtBr })),
@@ -130,63 +138,123 @@ export const useStore = create<GameState>((set, get) => {
                 isExerted: false,
                 damage: 0,
             };
-            set((state) => ({ myCards: [...state.myCards, newCard] }));
+            const updatedCards = [...get().myCards, newCard];
+            set({ myCards: updatedCards });
+
+            const roomId = get().roomId;
+            if (roomId) {
+                // When syncing to others, we obfuscate cards in hand/deck
+                const syncedCards = updatedCards.map(c =>
+                    (c.zone === 'hand' || c.zone === 'deck')
+                        ? { ...c, imageUrl: '/card-back.jpg', ptImageUrl: null, name: 'Card' }
+                        : c
+                );
+                socket.emit('update_cards', { roomId, cards: syncedCards });
+            }
         },
 
         moveCard: (uid, toZone) => {
-            set((state) => ({
-                myCards: state.myCards.map(c => c.uid === uid ? { ...c, zone: toZone, isExerted: false } : c)
-            }));
-            // NOTE: In a full MVP, we'd emit 'move_card' to socket so others see where our cards moved on the field
+            const updatedCards = get().myCards.map(c => c.uid === uid ? { ...c, zone: toZone, isExerted: false } : c);
+            set({ myCards: updatedCards });
+
+            const roomId = get().roomId;
+            if (roomId) {
+                const syncedCards = updatedCards.map(c =>
+                    (c.zone === 'hand' || c.zone === 'deck')
+                        ? { ...c, imageUrl: '/card-back.jpg', ptImageUrl: null, name: 'Card' }
+                        : c
+                );
+                socket.emit('update_cards', { roomId, cards: syncedCards });
+            }
         },
 
         toggleExert: (uid) => {
-            set((state) => ({
-                myCards: state.myCards.map(c => c.uid === uid ? { ...c, isExerted: !c.isExerted } : c)
-            }));
+            const updatedCards = get().myCards.map(c => c.uid === uid ? { ...c, isExerted: !c.isExerted } : c);
+            set({ myCards: updatedCards });
+
+            const roomId = get().roomId;
+            if (roomId) {
+                const syncedCards = updatedCards.map(c =>
+                    (c.zone === 'hand' || c.zone === 'deck')
+                        ? { ...c, imageUrl: '/card-back.jpg', ptImageUrl: null, name: 'Card' }
+                        : c
+                );
+                socket.emit('update_cards', { roomId, cards: syncedCards });
+            }
         },
 
         addDamage: (uid) => {
-            set((state) => ({
-                myCards: state.myCards.map(c => c.uid === uid ? { ...c, damage: c.damage + 1 } : c)
-            }));
+            const updatedCards = get().myCards.map(c => c.uid === uid ? { ...c, damage: c.damage + 1 } : c);
+            set({ myCards: updatedCards });
+
+            const roomId = get().roomId;
+            if (roomId) {
+                const syncedCards = updatedCards.map(c =>
+                    (c.zone === 'hand' || c.zone === 'deck')
+                        ? { ...c, imageUrl: '/card-back.jpg', ptImageUrl: null, name: 'Card' }
+                        : c
+                );
+                socket.emit('update_cards', { roomId, cards: syncedCards });
+            }
         },
 
         removeDamage: (uid) => {
-            set((state) => ({
-                myCards: state.myCards.map(c => c.uid === uid && c.damage > 0 ? { ...c, damage: c.damage - 1 } : c)
-            }));
+            const updatedCards = get().myCards.map(c => c.uid === uid && c.damage > 0 ? { ...c, damage: c.damage - 1 } : c);
+            set({ myCards: updatedCards });
+
+            const roomId = get().roomId;
+            if (roomId) {
+                const syncedCards = updatedCards.map(c =>
+                    (c.zone === 'hand' || c.zone === 'deck')
+                        ? { ...c, imageUrl: '/card-back.jpg', ptImageUrl: null, name: 'Card' }
+                        : c
+                );
+                socket.emit('update_cards', { roomId, cards: syncedCards });
+            }
         },
 
         drawCard: () => {
-            set((state) => {
-                // Get all cards in the deck
-                const deckCards = state.myCards.filter(c => c.zone === 'deck');
-                if (deckCards.length === 0) return state; // nothing to draw
+            const deckCards = get().myCards.filter(c => c.zone === 'deck');
+            if (deckCards.length === 0) return;
 
-                // Pop the last card (or random) and move it to hand
-                const cardToDraw = deckCards[deckCards.length - 1];
+            const cardToDraw = deckCards[deckCards.length - 1];
+            const updatedCards = get().myCards.map(c => c.uid === cardToDraw.uid ? { ...c, zone: 'hand' as const } : c);
+            set({ myCards: updatedCards });
 
-                return {
-                    myCards: state.myCards.map(c => c.uid === cardToDraw.uid ? { ...c, zone: 'hand' as const } : c)
-                };
-            });
+            const roomId = get().roomId;
+            if (roomId) {
+                const syncedCards = updatedCards.map(c =>
+                    (c.zone === 'hand' || c.zone === 'deck')
+                        ? { ...c, imageUrl: '/card-back.jpg', ptImageUrl: null, name: 'Card' }
+                        : c
+                );
+                socket.emit('update_cards', { roomId, cards: syncedCards });
+            }
         },
 
         shuffleDeck: () => {
-            set((state) => {
-                const newCards = [...state.myCards];
-                const deckCards = newCards.filter(c => c.zone === 'deck');
-                const otherCards = newCards.filter(c => c.zone !== 'deck');
+            const newCards = [...get().myCards];
+            const deckCards = newCards.filter(c => c.zone === 'deck');
+            const otherCards = newCards.filter(c => c.zone !== 'deck');
 
-                // Fisher-Yates shuffle on deckCards
-                for (let i = deckCards.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [deckCards[i], deckCards[j]] = [deckCards[j], deckCards[i]];
-                }
+            for (let i = deckCards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deckCards[i], deckCards[j]] = [deckCards[j], deckCards[i]];
+            }
 
-                return { myCards: [...otherCards, ...deckCards] };
-            });
+            const updatedCards = [...otherCards, ...deckCards];
+            set({ myCards: updatedCards });
+
+            // Shuffling doesn't change visible card states on board, but we sync anyway
+            const roomId = get().roomId;
+            if (roomId) {
+                const syncedCards = updatedCards.map(c =>
+                    (c.zone === 'hand' || c.zone === 'deck')
+                        ? { ...c, imageUrl: '/card-back.jpg', ptImageUrl: null, name: 'Card' }
+                        : c
+                );
+                socket.emit('update_cards', { roomId, cards: syncedCards });
+            }
         }
     };
 });

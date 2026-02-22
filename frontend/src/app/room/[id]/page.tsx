@@ -15,7 +15,7 @@ export default function GameRoom() {
     const router = useRouter();
     const [showGallery, setShowGallery] = useState(false);
 
-    const { players, connected, joinRoom, playerName, myCards, moveCard, toggleExert, addDamage, removeDamage, isPtBr, toggleLanguage, drawCard, shuffleDeck } = useStore();
+    const { players, connected, joinRoom, playerName, myCards, moveCard, toggleExert, addDamage, removeDamage, isPtBr, toggleLanguage, drawCard, shuffleDeck, opponentCards } = useStore();
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -94,17 +94,48 @@ export default function GameRoom() {
                     <div className="w-full h-full p-6 flex flex-col gap-6">
 
                         {/* Opponents Area (Top) */}
-                        <div className="flex-1 flex justify-center items-start gap-4 p-4 border border-slate-800/50 rounded-2xl bg-slate-900/20">
-                            {players.filter(p => p.name !== playerName).map((opponent) => (
-                                <div key={opponent.id} className="w-64 h-32 bg-slate-800/80 backdrop-blur-sm rounded-xl border border-slate-700 p-4 shadow-xl flex flex-col items-center justify-center relative overflow-hidden group">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    <h3 className="text-slate-200 font-bold mb-1">{opponent.name}</h3>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-amber-400 font-bold text-2xl">{opponent.lore}</span>
-                                        <span className="text-slate-400 text-sm uppercase tracking-wider font-semibold">Lore</span>
+                        <div className="h-44 flex justify-center items-stretch gap-4 p-4 border border-slate-800/50 rounded-2xl bg-slate-900/20 overflow-x-auto">
+                            {players.filter(p => p.name !== playerName).map((opponent) => {
+                                const oCards = opponentCards[opponent.id] || [];
+                                return (
+                                    <div key={opponent.id} className="min-w-[300px] flex bg-slate-800/80 backdrop-blur-sm rounded-xl border border-slate-700 p-3 shadow-xl relative overflow-hidden group">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none" />
+
+                                        {/* Opponent Info */}
+                                        <div className="w-24 flex flex-col items-center justify-center border-r border-slate-700 pr-3 mr-3">
+                                            <h3 className="text-slate-200 font-bold text-xs mb-1 truncate w-full text-center">{opponent.name}</h3>
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-amber-400 font-bold text-xl">{opponent.lore}</span>
+                                                <span className="text-slate-500 text-[8px] uppercase font-bold">Lore</span>
+                                            </div>
+                                            <div className="mt-2 flex gap-2">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-slate-300 text-[10px] font-bold">{oCards.filter(c => c.zone === 'hand').length}</span>
+                                                    <span className="text-slate-500 text-[7px] uppercase">Mão</span>
+                                                </div>
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-indigo-400 text-[10px] font-bold">{oCards.filter(c => c.zone === 'inkwell').length}</span>
+                                                    <span className="text-slate-500 text-[7px] uppercase">Tinta</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Opponent Field (Mini Cards) */}
+                                        <div className="flex-1 flex flex-wrap gap-1 content-start overflow-y-auto">
+                                            {oCards.filter(c => c.zone === 'field').map(card => (
+                                                <div key={card.uid} className="scale-[0.5] origin-top-left -mr-8 -mb-12">
+                                                    <Card card={card} isReadOnly />
+                                                </div>
+                                            ))}
+                                            {oCards.filter(c => c.zone === 'field').length === 0 && (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <span className="text-slate-600 text-[10px] uppercase tracking-widest opacity-30">Campo Vazio</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                             {players.length === 1 && (
                                 <div className="text-slate-500 font-medium italic flex items-center justify-center w-full h-full">
                                     Aguardando oponentes entrarem na sala...

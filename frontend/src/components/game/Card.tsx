@@ -7,15 +7,20 @@ interface CardProps {
     onExert?: (uid: string) => void;
     onAddDamage?: (uid: string) => void;
     onRemoveDamage?: (uid: string) => void;
+    isReadOnly?: boolean;
 }
 
-export default function Card({ card, onExert, onAddDamage, onRemoveDamage }: CardProps) {
+export default function Card({ card, onExert, onAddDamage, onRemoveDamage, isReadOnly }: CardProps) {
     const isPtBr = useStore(state => state.isPtBr);
 
-    const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    // Only use draggable if NOT readOnly
+    const dnd = useDraggable({
         id: card.uid,
         data: { card },
+        disabled: isReadOnly
     });
+
+    const { attributes, listeners, setNodeRef, transform } = dnd;
 
     const style = transform ? {
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0) relative`,
@@ -25,7 +30,7 @@ export default function Card({ card, onExert, onAddDamage, onRemoveDamage }: Car
     // Double click to exert
     const handleDoubleClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (onExert) onExert(card.uid);
+        if (!isReadOnly && onExert) onExert(card.uid);
     };
 
     return (
@@ -35,7 +40,7 @@ export default function Card({ card, onExert, onAddDamage, onRemoveDamage }: Car
             {...listeners}
             {...attributes}
             onDoubleClick={handleDoubleClick}
-            className={`relative w-24 h-36 bg-slate-800 rounded-lg border-2 shadow-xl flex-shrink-0 cursor-grab active:cursor-grabbing transition-transform flex flex-col items-center justify-center group ${card.isExerted ? 'rotate-90 scale-95 border-amber-500 shadow-amber-500/20' : 'border-slate-600 hover:-translate-y-2'
+            className={`relative rounded-lg border-2 shadow-xl flex-shrink-0 transition-transform flex flex-col items-center justify-center group ${isReadOnly ? 'w-16 h-24' : 'w-24 h-36 cursor-grab active:cursor-grabbing hover:-translate-y-2'} ${card.isExerted ? 'rotate-90 scale-95 border-amber-500 shadow-amber-500/20' : 'border-slate-600'
                 }`}
         >
             <img
@@ -52,7 +57,7 @@ export default function Card({ card, onExert, onAddDamage, onRemoveDamage }: Car
             )}
 
             {/* Quick Action Overlay (Visible on Hover in Field) */}
-            {card.zone === 'field' && (
+            {!isReadOnly && card.zone === 'field' && (
                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 border border-slate-700 rounded-lg p-1 flex gap-1 shadow-2xl z-20">
                     <button
                         onPointerDown={(e) => { e.stopPropagation(); if (onRemoveDamage) onRemoveDamage(card.uid); }}
