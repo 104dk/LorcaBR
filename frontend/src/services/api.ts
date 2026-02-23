@@ -1,59 +1,51 @@
 import axios from 'axios';
+import { CardAbilities } from '../store/useStore';
 
+/** Matches the structure of public/lorcana-database.json */
 export interface LorcanaCard {
-    id: string; // The API sometimes uses different IDs
+    id: string;
     name: string;
     title: string;
-    cost: number;
-    inkwell: number;
+    type: string;      // Character | Action | Item | Location | Song
     color: string;
-    type: string;
-    action_text: string;
-    lore: number;
+    cost: number;
+    inkable: boolean;
     strength: number;
     willpower: number;
+    lore: number;      // Lore value per quest
+    abilities: CardAbilities;
+    body_text: string;
     image_urls: {
         en?: string;
-        pt?: string; // we will try to support pt-br if the API has it
+        pt?: string;
     };
 }
 
-const LORCANA_API_BASE = 'https://api.lorcana-api.com/cards/fetch';
+const LOCAL_DATABASE_URL = '/lorcana-database.json';
 
-// Simple in-memory cache to prevent spamming the Lorcana API
-const cache = new Map<string, any>();
+// In-memory cache to avoid re-fetching on every search
+const cache = new Map<string, LorcanaCard[]>();
 
 export const lorcanaApi = {
-    /**
-     * Fetch all cards efficiently (with a simple client-side cache)
-     */
     async fetchAllCards(): Promise<LorcanaCard[]> {
-        if (cache.has('ALL_CARDS')) {
-            return cache.get('ALL_CARDS');
-        }
+        if (cache.has('ALL_CARDS')) return cache.get('ALL_CARDS')!;
 
         try {
-            const response = await axios.get(`${LORCANA_API_BASE}?search=all`);
-            // The API returns an array or an object depending on the endpoint.
-            // Usually fetch?search=all returns a large array of objects.
-            const cards: LorcanaCard[] = response.data;
-
+            const { data } = await axios.get<LorcanaCard[]>(LOCAL_DATABASE_URL);
+            const cards = Array.isArray(data) ? data : [];
             cache.set('ALL_CARDS', cards);
             return cards;
-        } catch (error) {
-            console.error('Failed to fetch cards from Lorcana API', error);
+        } catch (e) {
+            console.error('Failed to load local lorcana-database.json', e);
             return [];
         }
     },
 
-    /**
-     * Search cards by name
-     */
     async searchCards(query: string): Promise<LorcanaCard[]> {
-        const allCards = await this.fetchAllCards();
-        return allCards.filter(card =>
-            card.name.toLowerCase().includes(query.toLowerCase()) ||
-            (card.title && card.title.toLowerCase().includes(query.toLowerCase()))
-        ).slice(0, 50); // limit to 50 results
-    }
+        const all = await this.fetchAllCards();
+        const q = query.toLowerCase();
+        return all
+            .filter(c => c?.name && c.name.toLowerCase().includes(q))
+            .slice(0, 50);
+    },
 };

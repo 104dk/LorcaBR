@@ -2,12 +2,14 @@ export interface Player {
     id: string; // Socket UUID
     name: string;
     lore: number;
+    team?: 'blue' | 'red';
 }
 
 export interface Room {
     id: string;
     players: Player[];
     maxPlayers: number;
+    gameMode: string;
 }
 
 export class RoomManager {
@@ -19,6 +21,7 @@ export class RoomManager {
             id: roomId,
             players: [],
             maxPlayers: 4,
+            gameMode: '1v1',
         };
         this.rooms.set(roomId, newRoom);
         return newRoom;
@@ -41,6 +44,7 @@ export class RoomManager {
             id: playerId,
             name: playerName,
             lore: 0,
+            team: undefined,
         });
         return room;
     }
@@ -66,7 +70,32 @@ export class RoomManager {
         const player = room.players.find((p) => p.id === playerId);
         if (!player) return new Error('Player not in room');
 
-        player.lore = Math.max(0, player.lore + loreDelta); // Prevent negative lore
+        if (room.gameMode === '2v2' && player.team) {
+            // Update all players on the same team
+            room.players.forEach(p => {
+                if (p.team === player.team) {
+                    p.lore = Math.max(0, p.lore + loreDelta);
+                }
+            });
+        } else {
+            player.lore = Math.max(0, player.lore + loreDelta); // Prevent negative lore
+        }
+        return room;
+    }
+
+    setGameMode(roomId: string, mode: string): Room | Error {
+        const room = this.rooms.get(roomId);
+        if (!room) return new Error('Room not found');
+        room.gameMode = mode;
+        return room;
+    }
+
+    setPlayerTeam(roomId: string, playerId: string, team: 'blue' | 'red'): Room | Error {
+        const room = this.rooms.get(roomId);
+        if (!room) return new Error('Room not found');
+        const player = room.players.find(p => p.id === playerId);
+        if (!player) return new Error('Player not in room');
+        player.team = team;
         return room;
     }
 

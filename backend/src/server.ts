@@ -50,18 +50,37 @@ io.on('connection', (socket) => {
     socket.on('update_lore', ({ roomId, delta }) => {
         const result = globalRoomManager.updatePlayerLore(roomId, socket.id, delta);
         if (!(result instanceof Error)) {
-            // Broadcast updated room state
+            io.to(roomId).emit('room_state_updated', result);
+        }
+    });
+
+    socket.on('set_game_mode', ({ roomId, mode }) => {
+        const result = globalRoomManager.setGameMode(roomId, mode);
+        if (!(result instanceof Error)) {
+            io.to(roomId).emit('room_state_updated', result);
+        }
+    });
+
+    socket.on('assign_team', ({ roomId, team }) => {
+        const result = globalRoomManager.setPlayerTeam(roomId, socket.id, team);
+        if (!(result instanceof Error)) {
             io.to(roomId).emit('room_state_updated', result);
         }
     });
 
     socket.on('update_cards', ({ roomId, cards }) => {
-        // Broadcast this player's cards to everyone else in the room
         socket.to(roomId).emit('opponent_cards_updated', { playerId: socket.id, cards });
     });
 
+    socket.on('end_turn', ({ roomId }) => {
+        socket.to(roomId).emit('turn_ended');
+    });
+
+    socket.on('challenge_result', ({ roomId, defenderUid, damage }) => {
+        socket.to(roomId).emit('take_challenge_damage', { defenderUid, damage });
+    });
+
     socket.on('disconnecting', () => {
-        // leave any rooms this socket is in
         socket.rooms.forEach((roomId) => {
             globalRoomManager.leaveRoom(roomId, socket.id);
             const room = globalRoomManager.getRoom(roomId);
