@@ -38,17 +38,21 @@ export default function GameRoom() {
         if (!playerName) { router.push('/'); return; }
         joinRoom(roomId).then(success => {
             if (success) {
-                // Try to load deck if deckId is in URL
                 const searchParams = new URLSearchParams(window.location.search);
                 const deckId = searchParams.get('deckId');
                 if (deckId) {
-                    const deck = JSON.parse(localStorage.getItem('lorcana_decks') || '[]').find((d: any) => d.id === deckId);
+                    // BUG 1 FIX: Use the same key that deckStore.ts uses
+                    const stored = localStorage.getItem('LorcanaBR_SavedDecks');
+                    const allDecks = stored ? JSON.parse(stored) : [];
+                    const deck = allDecks.find((d: any) => d.id === deckId);
                     if (deck) {
                         useStore.getState().spawnDeck(deck.cards);
-                        // Optional: draw initial hand
-                        for (let i = 0; i < 7; i++) {
-                            useStore.getState().drawCard();
-                        }
+                        // BUG 4 FIX: Use setTimeout to draw initial hand after state settles
+                        setTimeout(() => {
+                            for (let i = 0; i < 7; i++) {
+                                useStore.getState().drawCard();
+                            }
+                        }, 100);
                     }
                 }
             }

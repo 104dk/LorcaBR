@@ -132,12 +132,20 @@ export const useStore = create<GameState>((set, get) => {
             if (p.team === 'red') teamLore.red = p.lore;
         });
 
-        set({
+        const newState: Partial<GameState> = {
             players: room.players,
             gameMode: room.gameMode,
             myTeam: myPlayer?.team || null,
             teamLore
-        });
+        };
+
+        // BUG 6 FIX: Win condition - if my lore reached 20, trigger win
+        const currentGameOver = get().gameOver;
+        if (!currentGameOver && myPlayer && myPlayer.lore >= 20) {
+            newState.gameOver = 'win';
+        }
+
+        set(newState);
     });
     socket.on('opponent_cards_updated', ({ playerId, cards }) => {
         set(state => ({ opponentCards: { ...state.opponentCards, [playerId]: cards } }));
@@ -294,19 +302,26 @@ export const useStore = create<GameState>((set, get) => {
             const boardZones: GameCard['zone'][] = ['ready', 'exerted', 'quest', 'items'];
             const updated = get().myCards.map(c => {
                 if (c.uid !== uid) return c;
+                // BUG 2 FIX: Prevent isNew cards from entering quest zone (same as questCard guard)
+                if (toZone === 'quest' && c.isNew && !c.abilities.rush) return c;
                 const comingToBoard = boardZones.includes(toZone);
-                // Mark as isNew ONLY when first entering a board zone from hand
                 const wasInHand = c.zone === 'hand';
                 return {
                     ...c,
                     zone: toZone,
-                    isExerted: false,
+                    isExerted: toZone === 'quest' ? true : false, // Auto-exert on quest zone
                     isNew: comingToBoard && wasInHand,
                 };
             });
             set({ myCards: updated });
             const { roomId } = get();
             if (roomId) syncCards(updated, roomId);
+
+            // BUG 2 FIX: If card was moved to quest zone, emit lore gain (like questCard action)
+            const movedCard = get().myCards.find(c => c.uid === uid);
+            if (toZone === 'quest' && movedCard && movedCard.loreValue > 0 && roomId) {
+                socket.emit('update_team_lore', { roomId, delta: movedCard.loreValue });
+            }
         },
 
         toggleExert: (uid) => {
@@ -419,7 +434,8 @@ export const useStore = create<GameState>((set, get) => {
             // Gain lore
             const delta = card.loreValue || 0;
             if (delta > 0 && roomId) {
-                socket.emit('update_lore', { roomId, delta });
+                // BUG 3 FIX: Use the correct event name that backend listens to
+                socket.emit('update_team_lore', { roomId, delta });
             }
             if (roomId) syncCards(updated, roomId);
         },
