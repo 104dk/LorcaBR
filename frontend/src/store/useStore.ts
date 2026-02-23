@@ -124,10 +124,19 @@ export const useStore = create<GameState>((set, get) => {
     socket.on('room_state_updated', (room: Room) => {
         const playerName = get().playerName;
         const myPlayer = room.players.find(p => p.name === playerName);
+
+        // Calculate team lore
+        const teamLore = { blue: 0, red: 0 };
+        room.players.forEach(p => {
+            if (p.team === 'blue') teamLore.blue = p.lore;
+            if (p.team === 'red') teamLore.red = p.lore;
+        });
+
         set({
             players: room.players,
             gameMode: room.gameMode,
-            myTeam: myPlayer?.team || null
+            myTeam: myPlayer?.team || null,
+            teamLore
         });
     });
     socket.on('opponent_cards_updated', ({ playerId, cards }) => {
@@ -211,7 +220,7 @@ export const useStore = create<GameState>((set, get) => {
 
         updateLore: (delta) => {
             const { roomId } = get();
-            if (roomId) socket.emit('update_lore', { roomId, delta });
+            if (roomId) socket.emit('update_team_lore', { roomId, delta });
         },
 
         spawnCard: (card, zone = 'hand') => {

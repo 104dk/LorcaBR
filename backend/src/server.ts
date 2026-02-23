@@ -47,7 +47,7 @@ io.on('connection', (socket) => {
         callback({ success: true, room: result });
     });
 
-    socket.on('update_lore', ({ roomId, delta }) => {
+    socket.on('update_team_lore', ({ roomId, delta }) => {
         const result = globalRoomManager.updatePlayerLore(roomId, socket.id, delta);
         if (!(result instanceof Error)) {
             io.to(roomId).emit('room_state_updated', result);

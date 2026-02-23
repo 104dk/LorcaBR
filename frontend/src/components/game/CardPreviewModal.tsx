@@ -47,7 +47,7 @@ export default function CardPreviewModal({ card, onClose }: CardPreviewModalProp
         const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', handleEsc);
         return () => window.removeEventListener('keydown', handleEsc);
-    }, [card, onClose]);
+    }, [card]);
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">

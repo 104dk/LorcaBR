@@ -23,7 +23,7 @@ export default function GameRoom() {
         isPtBr, toggleLanguage, drawCard, shuffleDeck, opponentCards,
         isMyTurn, hasInkedThisTurn, endTurn, inkCard, questCard,
         challengerUid, setChallengerUid, challengeCard,
-        gameOver, dismissGameOver,
+        gameOver, dismissGameOver, gameMode, myTeam,
     } = useStore();
 
     // --- Drag & Drop ---
@@ -174,16 +174,25 @@ export default function GameRoom() {
                             {players.filter(p => p.name !== playerName).map((opponent) => {
                                 const oCards = opponentCards[opponent.id] || [];
                                 const hasBoard = oCards.some(c => ['ready', 'exerted', 'quest', 'items'].includes(c.zone));
+                                const isPartner = gameMode === '2v2' && opponent.team === myTeam;
+
                                 return (
-                                    <div key={opponent.id} className="min-w-[280px] flex bg-slate-800/60 backdrop-blur-sm rounded-xl border border-slate-700 p-2 shadow-xl relative overflow-hidden">
+                                    <div key={opponent.id} className={`min-w-[280px] flex backdrop-blur-sm rounded-xl border p-2 shadow-xl relative overflow-hidden transition-all ${isPartner ? 'bg-indigo-900/40 border-indigo-500/50 ring-1 ring-indigo-500/20' : 'bg-slate-800/60 border-slate-700'}`}>
+                                        {/* Team Badge */}
+                                        {gameMode === '2v2' && (
+                                            <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase tracking-tighter rounded-bl-lg border-l border-b ${isPartner ? 'bg-indigo-500 text-white border-indigo-400' : 'bg-red-500 text-white border-red-400'}`}>
+                                                {isPartner ? 'Parceiro' : 'Oponente'}
+                                            </div>
+                                        )}
+
                                         {/* Opponent info */}
                                         <div className="w-20 flex flex-col items-center justify-center border-r border-slate-700 pr-2 mr-2 flex-shrink-0">
-                                            <h3 className="text-slate-200 font-bold text-xs mb-1 truncate w-full text-center">{opponent.name}</h3>
-                                            <span className="text-amber-400 font-black text-2xl">{opponent.lore}</span>
+                                            <h3 className={`font-bold text-xs mb-1 truncate w-full text-center ${isPartner ? 'text-indigo-200' : 'text-slate-200'}`}>{opponent.name}</h3>
+                                            <span className={`font-black text-2xl ${isPartner ? 'text-indigo-400' : 'text-amber-400'}`}>{opponent.lore}</span>
                                             <span className="text-slate-500 text-[8px] uppercase font-bold">Lore</span>
                                             <div className="mt-1 flex gap-2 text-[9px]">
                                                 <span className="text-slate-400">✋ {oCards.filter(c => c.zone === 'hand').length}</span>
-                                                <span className="text-indigo-400">💧 {oCards.filter(c => c.zone === 'inkwell').length}</span>
+                                                <span className={`${isPartner ? 'text-indigo-400' : 'text-indigo-400'}`}>💧 {oCards.filter(c => c.zone === 'inkwell').length}</span>
                                             </div>
                                         </div>
                                         {/* Opponent field */}
@@ -193,7 +202,7 @@ export default function GameRoom() {
                                                     <Card
                                                         card={card}
                                                         isReadOnly
-                                                        isTarget={!!challengerUid && card.isExerted}
+                                                        isTarget={!!challengerUid && card.isExerted && !isPartner}
                                                         onSelectTarget={handleSelectTarget}
                                                         onShowPreview={setPreviewCard}
                                                     />
